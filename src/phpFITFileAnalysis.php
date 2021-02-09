@@ -1340,7 +1340,7 @@ class phpFITFileAnalysis
         
         if (strlen($this->file_contents) - $header_size - 2 !== $this->file_header['data_size']) {
             // Overwrite the data_size. Seems to be incorrect if there are buffered messages e.g. HR records.
-            $this->file_header['data_size'] = $this->file_header['crc'] - $header_size + 2;
+            //$this->file_header['data_size'] = $this->file_header['crc'] - $header_size + 2;
         }
     }
     
