@@ -1742,23 +1742,23 @@ class phpFITFileAnalysis
         } else {
             if (isset($this->data_mesgs['record']['timestamp'])) {
                 $count_timestamp = count($this->data_mesgs['record']['timestamp']);  // No point try to insert missing values if we know there aren't any.
-                if (isset($this->data_mesgs['record']['cadence'])) {
+                if (isset($this->data_mesgs['record']['cadence']) && is_array($this->data_mesgs['record']['cadence'])) {
                     $bCadence = (count($this->data_mesgs['record']['cadence']) === $count_timestamp) ? false : in_array('cadence', $options['fix_data']);
                 }
-                if (isset($this->data_mesgs['record']['distance'])) {
+                if (isset($this->data_mesgs['record']['distance']) && is_array($this->data_mesgs['record']['distance'])) {
                     $bDistance = (count($this->data_mesgs['record']['distance']) === $count_timestamp) ? false : in_array('distance', $options['fix_data']);
                 }
-                if (isset($this->data_mesgs['record']['heart_rate'])) {
+                if (isset($this->data_mesgs['record']['heart_rate']) && is_array($this->data_mesgs['record']['heart_rate'])) {
                     $bHeartRate = (count($this->data_mesgs['record']['heart_rate']) === $count_timestamp) ? false : in_array('heart_rate', $options['fix_data']);
                 }
-                if (isset($this->data_mesgs['record']['position_lat']) && isset($this->data_mesgs['record']['position_long'])) {
+                if (isset($this->data_mesgs['record']['position_lat']) && isset($this->data_mesgs['record']['position_long']) && is_array($this->data_mesgs['record']['position_lat'])) {
                     $bLatitudeLongitude = (count($this->data_mesgs['record']['position_lat']) === $count_timestamp
                         && count($this->data_mesgs['record']['position_long']) === $count_timestamp) ? false : in_array('lat_lon', $options['fix_data']);
                 }
-                if (isset($this->data_mesgs['record']['speed'])) {
+                if (isset($this->data_mesgs['record']['speed']) && is_array($this->data_mesgs['record']['speed'])) {
                     $bSpeed = (count($this->data_mesgs['record']['speed']) === $count_timestamp) ? false : in_array('speed', $options['fix_data']);
                 }
-                if (isset($this->data_mesgs['record']['power'])) {
+                if (isset($this->data_mesgs['record']['power']) && is_array($this->data_mesgs['record']['power'])) {
                     $bPower = (count($this->data_mesgs['record']['power']) === $count_timestamp) ? false : in_array('power', $options['fix_data']);
                 }
             }
