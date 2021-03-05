@@ -1806,32 +1806,34 @@ class phpFITFileAnalysis
                 }
             }
         }
-        
+
+        $paused_timestamps = $this->isPaused();
+
         if ($bCadence) {
             ksort($this->data_mesgs['record']['cadence']);  // no interpolation; zeros added earlier
         }
         if ($bDistance) {
-            $this->interpolateMissingData($missing_distance_keys, $this->data_mesgs['record']['distance']);
+            $this->interpolateMissingData($missing_distance_keys, $this->data_mesgs['record']['distance'], $paused_timestamps);
         }
         if ($bHeartRate) {
-            $this->interpolateMissingData($missing_hr_keys, $this->data_mesgs['record']['heart_rate']);
+            $this->interpolateMissingData($missing_hr_keys, $this->data_mesgs['record']['heart_rate'], $paused_timestamps);
         }
         if ($bLatitudeLongitude) {
-            $this->interpolateMissingData($missing_lat_keys, $this->data_mesgs['record']['position_lat']);
-            $this->interpolateMissingData($missing_lon_keys, $this->data_mesgs['record']['position_long']);
+            $this->interpolateMissingData($missing_lat_keys, $this->data_mesgs['record']['position_lat'], $paused_timestamps);
+            $this->interpolateMissingData($missing_lon_keys, $this->data_mesgs['record']['position_long'], $paused_timestamps);
         }
         if ($bSpeed) {
-            $this->interpolateMissingData($missing_speed_keys, $this->data_mesgs['record']['speed']);
+            $this->interpolateMissingData($missing_speed_keys, $this->data_mesgs['record']['speed'], $paused_timestamps);
         }
         if ($bPower) {
-            $this->interpolateMissingData($missing_power_keys, $this->data_mesgs['record']['power']);
+            $this->interpolateMissingData($missing_power_keys, $this->data_mesgs['record']['power'], $paused_timestamps);
         }
     }
     
     /**
      * For the missing keys in the data, interpolate using values either side and insert as necessary.
      */
-    private function interpolateMissingData(&$missing_keys, &$array)
+    private function interpolateMissingData(&$missing_keys, &$array, $paused_timestamps)
     {
         if (!is_array($array)) {
             return;  // Can't interpolate if not an array
@@ -1844,19 +1846,23 @@ class phpFITFileAnalysis
         $count = count($missing_keys);
         
         for ($i=0; $i<$count; ++$i) {
-            if ($missing_keys[$i] !== 0) {
+            $missing_timestamp = $missing_keys[$i];
+
+            if ($missing_timestamp !== 0) {
+                $is_paused_timestamp = $paused_timestamps[$missing_timestamp] === true;
+
                 // Interpolating outside recorded range is impossible - use edge values instead
-                if ($missing_keys[$i] > $max_key) {
-                    $array[$missing_keys[$i]] = $array[$max_key];
+                if ($missing_timestamp > $max_key) {
+                    $array[$missing_timestamp] = $is_paused_timestamp ? null : $array[$max_key];
                     continue;
-                } elseif ($missing_keys[$i] < $min_key) {
-                    $array[$missing_keys[$i]] = $array[$min_key];
+                } elseif ($missing_timestamp < $min_key) {
+                    $array[$missing_timestamp] = $is_paused_timestamp ? null : $array[$min_key];
                     continue;
                 }
                 
                 $prev_value = $next_value = reset($array);
                 
-                while ($missing_keys[$i] > key($array)) {
+                while ($missing_timestamp > key($array)) {
                     $prev_value = current($array);
                     $next_value = next($array);
                 }
@@ -1871,7 +1877,7 @@ class phpFITFileAnalysis
                 $gap = ($next_value - $prev_value) / $num_points;
                 
                 for ($k=0; $k<=$num_points-2; ++$k) {
-                    $array[$missing_keys[$i+$k]] = $prev_value + ($gap * ($k+1));
+                    $array[$missing_keys[$i+$k]] = $is_paused_timestamp ? null : $prev_value + ($gap * ($k+1));
                 }
                 for ($k=0; $k<=$num_points-2; ++$k) {
                     $missing_keys[$i+$k] = 0;
@@ -2310,15 +2316,19 @@ class phpFITFileAnalysis
      */
     private function sma($array, $time_period)
     {
-        $sma_data = [];
         $data = array_values($array);
         $count = count($array);
         
         for ($i=0; $i<$count-$time_period; ++$i) {
-            $sma_data[] = array_sum(array_slice($data, $i, $time_period)) / $time_period;
+            $pieces = array_slice($data, $i, $time_period);
+
+            // if any of the values are 'null' we want to ignore this chunk since null values indicate pauses at that time
+            if (in_array(null, $pieces, true)) {
+                continue;
+            }
+
+            yield array_sum($pieces) / $time_period;
         }
-        
-        return $sma_data;
     }
     
     /**
@@ -2360,17 +2370,23 @@ class phpFITFileAnalysis
             throw new \Exception('phpFITFileAnalysis->powerMetrics(): power data not present in FIT file!');
         }
         
-        $power_metrics['Average Power'] = array_sum($this->data_mesgs['record']['power']) / count($this->data_mesgs['record']['power']);
+        $non_null_power_records = array_filter($this->data_mesgs['record']['power'], function ($powerRecord) {
+            return $powerRecord !== null;
+        });
+
+        $power_metrics['Average Power'] = array_sum($non_null_power_records) / count($non_null_power_records);
         $power_metrics['Kilojoules'] = ($power_metrics['Average Power'] * count($this->data_mesgs['record']['power'])) / 1000;
         
         // NP1 capture all values for rolling 30s averages
         $NP_values = ($this->php_trader_ext_loaded) ? trader_sma($this->data_mesgs['record']['power'], 30) : $this->sma($this->data_mesgs['record']['power'], 30);
         
         $NormalisedPower = 0.0;
+        $total_NP_values = 0;
         foreach ($NP_values as $value) {  // NP2 Raise all the values obtained in step NP1 to the fourth power
             $NormalisedPower += pow($value, 4);
+            ++$total_NP_values;
         }
-        $NormalisedPower /= count($NP_values);  // NP3 Find the average of the values in NP2
+        $NormalisedPower /= $total_NP_values;  // NP3 Find the average of the values in NP2
         $power_metrics['Normalised Power'] = pow($NormalisedPower, 1/4);  // NP4 taking the fourth root of the value obtained in step NP3
         
         $power_metrics['Variability Index'] = $power_metrics['Normalised Power'] / $power_metrics['Average Power'];
@@ -2475,7 +2491,7 @@ class phpFITFileAnalysis
             }
             $is_paused[$i] = $bPaused;
         }
-        $is_paused[$last_ts] = end($this->data_mesgs['record']['speed']) == 0 ? true : false;
+        $is_paused[$last_ts] = isset($this->data_mesgs['record']['speed']) && end($this->data_mesgs['record']['speed']) === 0;
         
         return $is_paused;
     }
