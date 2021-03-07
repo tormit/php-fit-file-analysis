@@ -1850,18 +1850,16 @@ class phpFITFileAnalysis
                 continue;
             }
 
+            // look ahead to when was unpaused at
             $unpaused_at = array_search(false, array_slice($paused_timestamps, $i, null, true));
 
-            // one prior to timestamp unpaused at
-            if (($unpaused_at - 1) - $timestamp <= $gap_threshold_seconds) {
+            if ($unpaused_at - $timestamp <= $gap_threshold_seconds) {
                 for ($x = $timestamp; $x < $unpaused_at; ++$x) {
                     $paused_timestamps[$x] = false;
                     $checked_timestamps[] = $x;
                 }
-
-                ++$i;
-
-                continue;
+            } else {
+                $checked_timestamps = array_merge($checked_timestamps, range($timestamp, $unpaused_at));
             }
 
             ++$i;
