@@ -1808,6 +1808,7 @@ class phpFITFileAnalysis
         }
 
         $paused_timestamps = $this->isPaused();
+        $this->filterPauseGapThreshold($paused_timestamps);
 
         if ($bCadence) {
             ksort($this->data_mesgs['record']['cadence']);  // no interpolation; zeros added earlier
@@ -1830,6 +1831,43 @@ class phpFITFileAnalysis
         }
     }
     
+    private function filterPauseGapThreshold(&$paused_timestamps)
+    {
+        $gap_threshold_seconds = 60;
+        $i = 0;
+        $checked_timestamps = [];
+
+        foreach ($paused_timestamps as $timestamp => $is_paused) {
+            if (in_array($timestamp, $checked_timestamps, true)) {
+                ++$i;
+                continue;
+            }
+
+            if (!$is_paused) {
+                $checked_timestamps[] = $timestamp;
+                ++$i;
+
+                continue;
+            }
+
+            $unpaused_at = array_search(false, array_slice($paused_timestamps, $i, null, true));
+
+            // one prior to timestamp unpaused at
+            if (($unpaused_at - 1) - $timestamp <= $gap_threshold_seconds) {
+                for ($x = $timestamp; $x < $unpaused_at; ++$x) {
+                    $paused_timestamps[$x] = false;
+                    $checked_timestamps[] = $x;
+                }
+
+                ++$i;
+
+                continue;
+            }
+
+            ++$i;
+        }
+    }
+
     /**
      * For the missing keys in the data, interpolate using values either side and insert as necessary.
      */
@@ -2926,7 +2964,7 @@ class phpFITFileAnalysis
             $j=0;
             for ($i=0; $i<11; $i++) {
                 $last_event_timestamp12 = $last_event_timestamp & 0xFFF;
-                $next_event_timestamp12;
+                $next_event_timestamp12 = null;
                 
                 if ($j % 2 === 0) {
                     $next_event_timestamp12 = $event_timestamp_12_val[$i] + (($event_timestamp_12_val[$i+1] & 0xF) << 8);
