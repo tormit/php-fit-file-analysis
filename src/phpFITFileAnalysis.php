@@ -2501,6 +2501,10 @@ class phpFITFileAnalysis
      */
     public function isPaused()
     {
+        if (!is_array($this->data_mesgs['event']['event'])) {
+            return [];
+        }
+
         /**
          * Event enumerated values of interest
          * 0 = timer
