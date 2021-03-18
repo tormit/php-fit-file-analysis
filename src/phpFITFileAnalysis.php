@@ -1885,7 +1885,7 @@ class phpFITFileAnalysis
             $missing_timestamp = $missing_keys[$i];
 
             if ($missing_timestamp !== 0) {
-                $is_paused_timestamp = $paused_timestamps[$missing_timestamp] === true;
+                $is_paused_timestamp = isset($paused_timestamps[$missing_timestamp]) && $paused_timestamps[$missing_timestamp] === true;
 
                 // Interpolating outside recorded range is impossible - use edge values instead
                 if ($missing_timestamp > $max_key) {
@@ -2501,7 +2501,7 @@ class phpFITFileAnalysis
      */
     public function isPaused()
     {
-        if (!is_array($this->data_mesgs['event']['event'])) {
+        if (!isset($this->data_mesgs['event']['event']) || !is_array($this->data_mesgs['event']['event'])) {
             return [];
         }
 
