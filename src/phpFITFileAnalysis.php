@@ -1568,7 +1568,12 @@ class phpFITFileAnalysis
                         if (isset($this->data_mesgs['record'][$field_definition_number['field_name']]) && !$this->options['overwrite_with_dev_data']) {
                             continue;
                         }
-                        $this->data_mesgs['record'][$field_definition_number['field_name']] = $this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'];
+
+                        if (isset($this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'])) {
+                            $this->data_mesgs['record'][$field_definition_number['field_name']] = $this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'];
+                        } else {
+                            $this->data_mesgs['record'][$field_definition_number['field_name']] = [];
+                        }
                     }
                 }
             }
