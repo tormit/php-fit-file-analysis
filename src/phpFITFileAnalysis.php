@@ -1732,11 +1732,11 @@ class phpFITFileAnalysis
         array_walk($options['fix_data'], function (&$value) {
             $value = strtolower($value);
         });  // Make all lower-case.
-        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power'], $options['fix_data'])) === 0) {
+        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power', 'altitude'], $options['fix_data'])) === 0) {
             throw new \Exception('phpFITFileAnalysis->fixData(): option not valid!');
         }
 
-        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = false;
+        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = $bAltitude = false;
         if (in_array('all', $options['fix_data'])) {
             $bCadence = isset($this->data_mesgs['record']['cadence']);
             $bDistance = isset($this->data_mesgs['record']['distance']);
@@ -1744,6 +1744,7 @@ class phpFITFileAnalysis
             $bLatitudeLongitude = isset($this->data_mesgs['record']['position_lat']) && isset($this->data_mesgs['record']['position_long']);
             $bSpeed = isset($this->data_mesgs['record']['speed']);
             $bPower = isset($this->data_mesgs['record']['power']);
+            $bAltitude = isset($this->data_mesgs['record']['altitude']);
         } else {
             if (isset($this->data_mesgs['record']['timestamp'])) {
                 $count_timestamp = count($this->data_mesgs['record']['timestamp']);  // No point try to insert missing values if we know there aren't any.
@@ -1766,6 +1767,9 @@ class phpFITFileAnalysis
                 if (isset($this->data_mesgs['record']['power']) && is_array($this->data_mesgs['record']['power'])) {
                     $bPower = (count($this->data_mesgs['record']['power']) === $count_timestamp) ? false : in_array('power', $options['fix_data']);
                 }
+                if (isset($this->data_mesgs['record']['altitude']) && is_array($this->data_mesgs['record']['altitude'])) {
+                    $bAltitude = (count($this->data_mesgs['record']['altitude']) === $count_timestamp) ? false : in_array('altitude', $options['fix_data']);
+                }
             }
         }
 
@@ -1775,6 +1779,7 @@ class phpFITFileAnalysis
         $missing_lon_keys = [];
         $missing_speed_keys = [];
         $missing_power_keys = [];
+        $missing_altitude_keys = [];
 
         foreach ($this->data_mesgs['record']['timestamp'] as $timestamp) {
             if ($bCadence) {  // Assumes all missing cadence values are zeros
@@ -1810,6 +1815,11 @@ class phpFITFileAnalysis
                     $missing_power_keys[] = $timestamp;
                 }
             }
+            if ($bAltitude) {
+                if (!isset($this->data_mesgs['record']['altitude'][$timestamp])) {
+                    $missing_altitude_keys[] = $timestamp;
+                }
+            }
         }
 
         $paused_timestamps = $this->isPaused();
@@ -1833,6 +1843,9 @@ class phpFITFileAnalysis
         }
         if ($bPower) {
             $this->interpolateMissingData($missing_power_keys, $this->data_mesgs['record']['power'], true, $paused_timestamps);
+        }
+        if ($bAltitude) {
+            $this->interpolateMissingData($missing_altitude_keys, $this->data_mesgs['record']['altitude'], false, $paused_timestamps);
         }
     }
 
