@@ -2560,7 +2560,7 @@ class phpFITFileAnalysis
             }
             $is_paused[$i] = $bPaused;
         }
-        $is_paused[$last_ts] = isset($this->data_mesgs['record']['speed']) && end($this->data_mesgs['record']['speed']) === 0;
+        $is_paused[$last_ts] = isset($this->data_mesgs['record']['speed']) && is_array($this->data_mesgs['record']['speed']) && end($this->data_mesgs['record']['speed']) === 0;
 
         return $is_paused;
     }
