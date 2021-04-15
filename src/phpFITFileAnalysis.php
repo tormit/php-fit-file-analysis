@@ -1703,9 +1703,10 @@ class phpFITFileAnalysis
             }
         }
 
-        // Remove duplicate timestamps
+        // Remove duplicate timestamps and store original before interpolating
         if (isset($this->data_mesgs['record']['timestamp']) && is_array($this->data_mesgs['record']['timestamp'])) {
             $this->data_mesgs['record']['timestamp'] = array_unique($this->data_mesgs['record']['timestamp']);
+            $this->data_mesgs['record']['timestamp_original'] = $this->data_mesgs['record']['timestamp'];
         }
 
         // Return if no option set
