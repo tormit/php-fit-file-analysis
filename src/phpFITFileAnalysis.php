@@ -2010,7 +2010,7 @@ class phpFITFileAnalysis
     }
     public function sport()
     {
-        $tmp = $this->enumData('sport', $this->data_mesgs['session']['sport']);
+        $tmp = $this->enumData('sport', isset($this->data_mesgs['session']['sport']) ? $this->data_mesgs['session']['sport'] : 0);
         return is_array($tmp) ? $tmp[0] : $tmp;
     }
 
