@@ -1714,6 +1714,10 @@ class phpFITFileAnalysis
             return;
         }
 
+        if (!isset($this->data_mesgs['record'])) {
+            return;
+        }
+
         // If $options['data_every_second'], then create timestamp array for every second from min to max
         if (!empty($options['data_every_second']) && !(is_string($options['data_every_second']) && strtolower($options['data_every_second']) === 'false')) {
             // If user has not specified the data to be fixed, assume all
