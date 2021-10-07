@@ -599,7 +599,7 @@ class phpFITFileAnalysis
             65534 => 'Garmin Connect website'   // connect
         ],
         'sport' => [  // Have capitalised and replaced underscores with spaces.
-            0 => 'Generic',
+            0 => 'Other',
             1 => 'Running',
             2 => 'Cycling',
             3 => 'Transition',
@@ -652,7 +652,7 @@ class phpFITFileAnalysis
             254 => 'All'
         ],
         'sub_sport' => [  // Have capitalised and replaced underscores with spaces.
-            0 => 'Generic',
+            0 => 'Other',
             1 => 'Treadmill',
             2 => 'Street',
             3 => 'Trail',
