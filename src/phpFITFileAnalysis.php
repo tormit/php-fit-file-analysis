@@ -1561,6 +1561,14 @@ class phpFITFileAnalysis
                         }
                         foreach ($this->defn_mesgs[$local_mesg_type]['dev_field_definitions'] as $field_defn) {
                             // Units
+                            if (!isset($this->data_mesgs['developer_data'])) {
+                                $this->data_mesgs['developer_data'] = [];
+                            }
+
+                            if (!isset($this->dev_field_descriptions[$field_defn['developer_data_index']])) {
+                                continue;
+                            }
+
                             $this->data_mesgs['developer_data'][$this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['field_name']]['units'] = $this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['units'] ?? null;
 
                             // Data
@@ -3003,7 +3011,11 @@ class phpFITFileAnalysis
             echo '<table class=\'table table-condensed table-striped\'>';
             echo '<thead><th>'.$mesg_key.'</th><th>count()</th></thead><tbody>';
             foreach ($mesg as $field_key => $field) {
-                echo '<tr><td>'.$field_key.'</td><td>'.count($field).'</td></tr>';
+                if (is_array($field)) {
+                    echo '<tr><td>'.$field_key.'</td><td>'.count($field).'</td></tr>';
+                } else {
+                    echo '<tr><td>'.$field_key.'</td><td>'.$field.'</td></tr>';
+                }
             }
             echo '</tbody></table><br><br>';
         }
