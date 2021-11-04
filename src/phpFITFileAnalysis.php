@@ -1796,11 +1796,11 @@ class phpFITFileAnalysis
         array_walk($options['fix_data'], function (&$value) {
             $value = strtolower($value);
         });  // Make all lower-case.
-        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power', 'altitude'], $options['fix_data'])) === 0) {
+        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power', 'altitude', 'enhanced_speed', 'enhanced_altitude'], $options['fix_data'])) === 0) {
             throw new \Exception('phpFITFileAnalysis->fixData(): option not valid!');
         }
 
-        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = $bAltitude = false;
+        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = $bAltitude = $bEnhancedSpeed = $bEnhancedAltitude = false;
         if (in_array('all', $options['fix_data'])) {
             $bCadence = isset($this->data_mesgs['record']['cadence']);
             $bDistance = isset($this->data_mesgs['record']['distance']);
@@ -1809,6 +1809,8 @@ class phpFITFileAnalysis
             $bSpeed = isset($this->data_mesgs['record']['speed']);
             $bPower = isset($this->data_mesgs['record']['power']);
             $bAltitude = isset($this->data_mesgs['record']['altitude']);
+            $bEnhancedSpeed = isset($this->data_mesgs['record']['enhanced_speed']);
+            $bEnhancedAltitude = isset($this->data_mesgs['record']['enhanced_altitude']);
         } else {
             if (isset($this->data_mesgs['record']['timestamp'])) {
                 $count_timestamp = count($this->data_mesgs['record']['timestamp']);  // No point try to insert missing values if we know there aren't any.
@@ -1834,6 +1836,12 @@ class phpFITFileAnalysis
                 if (isset($this->data_mesgs['record']['altitude']) && is_array($this->data_mesgs['record']['altitude'])) {
                     $bAltitude = (count($this->data_mesgs['record']['altitude']) === $count_timestamp) ? false : in_array('altitude', $options['fix_data']);
                 }
+                if (isset($this->data_mesgs['record']['enhanced_speed']) && is_array($this->data_mesgs['record']['enhanced_speed'])) {
+                    $bEnhancedSpeed = (count($this->data_mesgs['record']['enhanced_speed']) === $count_timestamp) ? false : in_array('enhanced_speed', $options['fix_data']);
+                }
+                if (isset($this->data_mesgs['record']['enhanced_altitude']) && is_array($this->data_mesgs['record']['enhanced_altitude'])) {
+                    $bEnhancedAltitude = (count($this->data_mesgs['record']['enhanced_altitude']) === $count_timestamp) ? false : in_array('enhanced_altitude', $options['fix_data']);
+                }
             }
         }
 
@@ -1844,6 +1852,8 @@ class phpFITFileAnalysis
         $missing_speed_keys = [];
         $missing_power_keys = [];
         $missing_altitude_keys = [];
+        $missing_enhanced_speed_keys = [];
+        $missing_enhanced_altitude_keys = [];
 
         foreach ($this->data_mesgs['record']['timestamp'] as $timestamp) {
             if ($bCadence) {  // Assumes all missing cadence values are zeros
@@ -1884,6 +1894,16 @@ class phpFITFileAnalysis
                     $missing_altitude_keys[] = $timestamp;
                 }
             }
+            if ($bEnhancedSpeed) {
+                if (!isset($this->data_mesgs['record']['enhanced_speed'][$timestamp])) {
+                    $missing_enhanced_speed_keys[] = $timestamp;
+                }
+            }
+            if ($bEnhancedAltitude) {
+                if (!isset($this->data_mesgs['record']['enhanced_altitude'][$timestamp])) {
+                    $missing_enhanced_altitude_keys[] = $timestamp;
+                }
+            }
         }
 
         $paused_timestamps = $this->isPaused();
@@ -1910,6 +1930,12 @@ class phpFITFileAnalysis
         }
         if ($bAltitude) {
             $this->interpolateMissingData($missing_altitude_keys, $this->data_mesgs['record']['altitude'], false, $paused_timestamps);
+        }
+        if ($bEnhancedSpeed) {
+            $this->interpolateMissingData($missing_enhanced_speed_keys, $this->data_mesgs['record']['enhanced_speed'], false, $paused_timestamps);
+        }
+        if ($bEnhancedAltitude) {
+            $this->interpolateMissingData($missing_enhanced_altitude_keys, $this->data_mesgs['record']['enhanced_altitude'], false, $paused_timestamps);
         }
     }
 
