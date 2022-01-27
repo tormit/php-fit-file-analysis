@@ -599,7 +599,7 @@ class phpFITFileAnalysis
             65534 => 'Garmin Connect website'   // connect
         ],
         'sport' => [  // Have capitalised and replaced underscores with spaces.
-            0 => 'Generic',
+            0 => 'Other',
             1 => 'Running',
             2 => 'Cycling',
             3 => 'Transition',
@@ -619,10 +619,40 @@ class phpFITFileAnalysis
             17 => 'Hiking',
             18 => 'Multisport',
             19 => 'Paddling',
+            20 => 'Flying',
+            21 => 'E-Biking',
+            22 => 'Motorcycling',
+            23 => 'Boating',
+            24 => 'Diving',
+            25 => 'Golf',
+            26 => 'Hang gliding',
+            27 => 'Horseback riding',
+            28 => 'Hunting',
+            29 => 'Fishing',
+            30 => 'Inline skating',
+            31 => 'Rock climbing',
+            32 => 'Sailing',
+            33 => 'Ice skating',
+            34 => 'Sky diving',
+            35 => 'Snowshoeing',
+            36 => 'Snowmobiling',
+            37 => 'Stand up paddleboarding',
+            38 => 'Surfing',
+            39 => 'Wakeboarding',
+            40 => 'Water skiing',
+            41 => 'Kayaking',
+            42 => 'Rafting',
+            43 => 'Windsurfing',
+            44 => 'Kitesurfing',
+            45 => 'Tactical',
+            46 => 'Jumpmaster',
+            47 => 'Boxing',
+            48 => 'Floor climbing',
+            53 => 'Diving',
             254 => 'All'
         ],
         'sub_sport' => [  // Have capitalised and replaced underscores with spaces.
-            0 => 'Generic',
+            0 => 'Other',
             1 => 'Treadmill',
             2 => 'Street',
             3 => 'Trail',
@@ -651,6 +681,27 @@ class phpFITFileAnalysis
             26 => 'Cardio training',
             27 => 'Indoor walking',
             28 => 'E-Bike Fitness',
+            29 => 'BMX',
+            30 => 'Casual walking',
+            31 => 'Speed walking',
+            32 => 'Bike to run transition',
+            33 => 'Run to bike transition',
+            34 => 'Swim to bike transition',
+            35 => 'ATV',
+            36 => 'Motocross',
+            37 => 'Backcountry skiing',
+            38 => 'Resort skiing',
+            39 => 'RC Drone',
+            40 => 'Wingsuit',
+            41 => 'Whitewater Kayaking',
+            42 => 'Skate skiing',
+            43 => 'Yoga',
+            44 => 'Pilates',
+            45 => 'Indoor running',
+            46 => 'Gravel cycling',
+            47 => 'Mountain Ebike',
+            48 => 'Commuting cycling',
+            49 => 'Mixed surface cycling',
             254 => 'All'
         ],
         'session_trigger' => [0 => 'activity_end', 1 => 'manual', 2 => 'auto_multi_sport', 3 => 'fitness_equipment'],
@@ -1521,7 +1572,15 @@ class phpFITFileAnalysis
                         }
                         foreach ($this->defn_mesgs[$local_mesg_type]['dev_field_definitions'] as $field_defn) {
                             // Units
-                            $this->data_mesgs['developer_data'][$this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['field_name']]['units'] = $this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['units'];
+                            if (!isset($this->data_mesgs['developer_data'])) {
+                                $this->data_mesgs['developer_data'] = [];
+                            }
+
+                            if (!isset($this->dev_field_descriptions[$field_defn['developer_data_index']])) {
+                                continue;
+                            }
+
+                            $this->data_mesgs['developer_data'][$this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['field_name']]['units'] = $this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['units'] ?? null;
 
                             // Data
                             $this->data_mesgs['developer_data'][$this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['field_name']]['data'][] = unpack($this->types[$this->dev_field_descriptions[$field_defn['developer_data_index']][$field_defn['field_definition_number']]['fit_base_type_id']]['format'], substr($this->file_contents, $this->file_pointer, $field_defn['size']))['tmp'];
@@ -1579,7 +1638,12 @@ class phpFITFileAnalysis
                         if (isset($this->data_mesgs['record'][$field_definition_number['field_name']]) && !$this->options['overwrite_with_dev_data']) {
                             continue;
                         }
-                        $this->data_mesgs['record'][$field_definition_number['field_name']] = $this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'];
+
+                        if (isset($this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'])) {
+                            $this->data_mesgs['record'][$field_definition_number['field_name']] = $this->data_mesgs['developer_data'][$field_definition_number['field_name']]['data'];
+                        } else {
+                            $this->data_mesgs['record'][$field_definition_number['field_name']] = [];
+                        }
                     }
                 }
             }
@@ -1709,13 +1773,18 @@ class phpFITFileAnalysis
             }
         }
 
-        // Remove duplicate timestamps
+        // Remove duplicate timestamps and store original before interpolating
         if (isset($this->data_mesgs['record']['timestamp']) && is_array($this->data_mesgs['record']['timestamp'])) {
             $this->data_mesgs['record']['timestamp'] = array_unique($this->data_mesgs['record']['timestamp']);
+            $this->data_mesgs['record']['timestamp_original'] = $this->data_mesgs['record']['timestamp'];
         }
 
         // Return if no option set
         if (empty($options['fix_data']) && empty($options['data_every_second'])) {
+            return;
+        }
+
+        if (!isset($this->data_mesgs['record'])) {
             return;
         }
 
@@ -1738,11 +1807,11 @@ class phpFITFileAnalysis
         array_walk($options['fix_data'], function (&$value) {
             $value = strtolower($value);
         });  // Make all lower-case.
-        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power'], $options['fix_data'])) === 0) {
+        if (count(array_intersect(['all', 'cadence', 'distance', 'heart_rate', 'lat_lon', 'speed', 'power', 'altitude', 'enhanced_speed', 'enhanced_altitude'], $options['fix_data'])) === 0) {
             throw new \Exception('phpFITFileAnalysis->fixData(): option not valid!');
         }
 
-        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = false;
+        $bCadence = $bDistance = $bHeartRate = $bLatitudeLongitude = $bSpeed = $bPower = $bAltitude = $bEnhancedSpeed = $bEnhancedAltitude = false;
         if (in_array('all', $options['fix_data'])) {
             $bCadence = isset($this->data_mesgs['record']['cadence']);
             $bDistance = isset($this->data_mesgs['record']['distance']);
@@ -1750,6 +1819,9 @@ class phpFITFileAnalysis
             $bLatitudeLongitude = isset($this->data_mesgs['record']['position_lat']) && isset($this->data_mesgs['record']['position_long']);
             $bSpeed = isset($this->data_mesgs['record']['speed']);
             $bPower = isset($this->data_mesgs['record']['power']);
+            $bAltitude = isset($this->data_mesgs['record']['altitude']);
+            $bEnhancedSpeed = isset($this->data_mesgs['record']['enhanced_speed']);
+            $bEnhancedAltitude = isset($this->data_mesgs['record']['enhanced_altitude']);
         } else {
             if (isset($this->data_mesgs['record']['timestamp'])) {
                 $count_timestamp = count($this->data_mesgs['record']['timestamp']);  // No point try to insert missing values if we know there aren't any.
@@ -1772,6 +1844,15 @@ class phpFITFileAnalysis
                 if (isset($this->data_mesgs['record']['power']) && is_array($this->data_mesgs['record']['power'])) {
                     $bPower = (count($this->data_mesgs['record']['power']) === $count_timestamp) ? false : in_array('power', $options['fix_data']);
                 }
+                if (isset($this->data_mesgs['record']['altitude']) && is_array($this->data_mesgs['record']['altitude'])) {
+                    $bAltitude = (count($this->data_mesgs['record']['altitude']) === $count_timestamp) ? false : in_array('altitude', $options['fix_data']);
+                }
+                if (isset($this->data_mesgs['record']['enhanced_speed']) && is_array($this->data_mesgs['record']['enhanced_speed'])) {
+                    $bEnhancedSpeed = (count($this->data_mesgs['record']['enhanced_speed']) === $count_timestamp) ? false : in_array('enhanced_speed', $options['fix_data']);
+                }
+                if (isset($this->data_mesgs['record']['enhanced_altitude']) && is_array($this->data_mesgs['record']['enhanced_altitude'])) {
+                    $bEnhancedAltitude = (count($this->data_mesgs['record']['enhanced_altitude']) === $count_timestamp) ? false : in_array('enhanced_altitude', $options['fix_data']);
+                }
             }
         }
 
@@ -1781,6 +1862,9 @@ class phpFITFileAnalysis
         $missing_lon_keys = [];
         $missing_speed_keys = [];
         $missing_power_keys = [];
+        $missing_altitude_keys = [];
+        $missing_enhanced_speed_keys = [];
+        $missing_enhanced_altitude_keys = [];
 
         foreach ($this->data_mesgs['record']['timestamp'] as $timestamp) {
             if ($bCadence) {  // Assumes all missing cadence values are zeros
@@ -1816,6 +1900,21 @@ class phpFITFileAnalysis
                     $missing_power_keys[] = $timestamp;
                 }
             }
+            if ($bAltitude) {
+                if (!isset($this->data_mesgs['record']['altitude'][$timestamp])) {
+                    $missing_altitude_keys[] = $timestamp;
+                }
+            }
+            if ($bEnhancedSpeed) {
+                if (!isset($this->data_mesgs['record']['enhanced_speed'][$timestamp])) {
+                    $missing_enhanced_speed_keys[] = $timestamp;
+                }
+            }
+            if ($bEnhancedAltitude) {
+                if (!isset($this->data_mesgs['record']['enhanced_altitude'][$timestamp])) {
+                    $missing_enhanced_altitude_keys[] = $timestamp;
+                }
+            }
         }
 
         $paused_timestamps = $this->isPaused();
@@ -1839,6 +1938,15 @@ class phpFITFileAnalysis
         }
         if ($bPower) {
             $this->interpolateMissingData($missing_power_keys, $this->data_mesgs['record']['power'], true, $paused_timestamps);
+        }
+        if ($bAltitude) {
+            $this->interpolateMissingData($missing_altitude_keys, $this->data_mesgs['record']['altitude'], false, $paused_timestamps);
+        }
+        if ($bEnhancedSpeed) {
+            $this->interpolateMissingData($missing_enhanced_speed_keys, $this->data_mesgs['record']['enhanced_speed'], false, $paused_timestamps);
+        }
+        if ($bEnhancedAltitude) {
+            $this->interpolateMissingData($missing_enhanced_altitude_keys, $this->data_mesgs['record']['enhanced_altitude'], false, $paused_timestamps);
         }
     }
 
@@ -1896,7 +2004,7 @@ class phpFITFileAnalysis
             $missing_timestamp = $missing_keys[$i];
 
             if ($missing_timestamp !== 0) {
-                $is_paused_timestamp = $paused_timestamps[$missing_timestamp] === true;
+                $is_paused_timestamp = isset($paused_timestamps[$missing_timestamp]) && $paused_timestamps[$missing_timestamp] === true;
 
                 // Interpolating outside recorded range is impossible - use edge values instead
                 if ($missing_timestamp > $max_key) {
@@ -2002,7 +2110,7 @@ class phpFITFileAnalysis
     }
     public function sport()
     {
-        $tmp = $this->enumData('sport', $this->data_mesgs['session']['sport']);
+        $tmp = $this->enumData('sport', isset($this->data_mesgs['session']['sport']) ? $this->data_mesgs['session']['sport'] : 0);
         return is_array($tmp) ? $tmp[0] : $tmp;
     }
 
@@ -2512,6 +2620,10 @@ class phpFITFileAnalysis
      */
     public function isPaused()
     {
+        if (!isset($this->data_mesgs['event']['event']) || !is_array($this->data_mesgs['event']['event'])) {
+            return [];
+        }
+
         /**
          * Event enumerated values of interest
          * 0 = timer
@@ -2548,7 +2660,7 @@ class phpFITFileAnalysis
             }
             $is_paused[$i] = $bPaused;
         }
-        $is_paused[$last_ts] = isset($this->data_mesgs['record']['speed']) && end($this->data_mesgs['record']['speed']) === 0;
+        $is_paused[$last_ts] = isset($this->data_mesgs['record']['speed']) && is_array($this->data_mesgs['record']['speed']) && end($this->data_mesgs['record']['speed']) === 0;
 
         return $is_paused;
     }
@@ -2936,7 +3048,11 @@ class phpFITFileAnalysis
             echo '<table class=\'table table-condensed table-striped\'>';
             echo '<thead><th>'.$mesg_key.'</th><th>count()</th></thead><tbody>';
             foreach ($mesg as $field_key => $field) {
-                echo '<tr><td>'.$field_key.'</td><td>'.count($field).'</td></tr>';
+                if (is_array($field)) {
+                    echo '<tr><td>'.$field_key.'</td><td>'.count($field).'</td></tr>';
+                } else {
+                    echo '<tr><td>'.$field_key.'</td><td>'.$field.'</td></tr>';
+                }
             }
             echo '</tbody></table><br><br>';
         }
