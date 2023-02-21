@@ -1440,7 +1440,7 @@ class phpFITFileAnalysis
                     $architecture = ord(substr($this->file_contents, $this->file_pointer, 1));  // Architecture
                     $this->file_pointer++;
 
-                    $this->types = $this->endianness[$architecture];
+                    $this->types = $this->endianness[$architecture] ?? [];
 
                     $global_mesg_num = ($architecture === 0) ? unpack('v1tmp', substr($this->file_contents, $this->file_pointer, 2))['tmp'] : unpack('n1tmp', substr($this->file_contents, $this->file_pointer, 2))['tmp'];
                     $this->file_pointer += 2;
