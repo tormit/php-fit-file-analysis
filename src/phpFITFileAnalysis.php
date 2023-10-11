@@ -929,6 +929,8 @@ class phpFITFileAnalysis
                 123 => ['field_name' => 'max_cadence_position',           'scale' => 1,         'offset' => 0, 'units' => 'rpm'],
                 253 => ['field_name' => 'timestamp',                      'scale' => 1,         'offset' => 0, 'units' => 's'],
                 254 => ['field_name' => 'message_index',                  'scale' => 1,         'offset' => 0, 'units' => ''],
+                192 => ['field_name' => 'feel',                           'scale' => 10,        'offset' => 0, 'units' => ''],
+                193 => ['field_name' => 'rpe',                            'scale' => 10,        'offset' => 0, 'units' => ''],
             ]
         ],
 
