@@ -1585,7 +1585,7 @@ class phpFITFileAnalysis
                                 } else {
                                     $file_key = $this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['mesg_name'];
                                     $field_key = [$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['field_name']];
-                                    $always_process = [['avg_heart_rate'], ['max_heart_rate'], ['time_in_hr_zone'], ['total_training_effect'], ['total_ascent'], ['total_descent']];
+                                    $always_process = [['avg_heart_rate'], ['max_heart_rate'], ['avg_power'], ['max_power'], ['normalized_power'], ['total_work'], ['total_cycles'], ['avg_cadence'], ['max_cadence'], ['avg_fractional_cadence'], ['max_fractional_cadence'], ['training_stress_score'], ['intensity_factor'], ['threshold_power'], ['time_in_hr_zone'], ['total_training_effect'], ['total_ascent'], ['total_descent']];
 
                                     if ($file_key === 'session' && in_array($field_key, $always_process, true)) {
                                         $this->data_mesgs[$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['mesg_name']][$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['field_name']][] = null;
@@ -1695,14 +1695,6 @@ class phpFITFileAnalysis
      */
     private function fixData($options)
     {
-        if (($this->data_mesgs['activity']['num_sessions'] ?? 1) > 1) {
-            foreach ($this->data_mesgs['sport']['name'] as $i => $sportName) {
-                if (!$sportName && $this->data_mesgs['sport']['sport'][$i]) {
-                    $this->data_mesgs['sport']['name'][$i] = $this->enumData('sport', $this->data_mesgs['sport']['sport'][$i]);
-                }
-            }
-        }
-
         // By default the constant FIT_UNIX_TS_DIFF will be added to timestamps, which have field type of date_time (or local_date_time).
         // Timestamp fields (field number == 253) converted after being unpacked in $this->readDataRecords().
         if (!$this->garmin_timestamps) {
