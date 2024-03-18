@@ -2152,8 +2152,8 @@ class phpFITFileAnalysis
     {
         $tmp = $this->enumData('sport', isset($this->data_mesgs['session']['sport']) ? $this->data_mesgs['session']['sport'] : 0);
 
-        if (is_array($tmp) && $index !== null) {
-            return $tmp[$index];
+        if (is_array($tmp)) {
+            return $tmp[$index ?? 0];
         }
 
         return $tmp;
