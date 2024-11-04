@@ -649,6 +649,13 @@ class phpFITFileAnalysis
             47 => 'Boxing',
             48 => 'Floor climbing',
             53 => 'Diving',
+            62 => 'HIIT',
+            64 => 'Racket',
+            65 => 'Wheelchair push walk',
+            66 => 'Wheelchair push run',
+            67 => 'Meditation',
+            76 => 'Water tubing',
+            77 => 'Wakesurfing',
             254 => 'All'
         ],
         'sub_sport' => [  // Have capitalised and replaced underscores with spaces.
@@ -702,6 +709,40 @@ class phpFITFileAnalysis
             47 => 'Mountain Ebike',
             48 => 'Commuting cycling',
             49 => 'Mixed surface cycling',
+            50 => 'Navigate',
+            51 => 'Track me',
+            52 => 'Map',
+            53 => 'Single gas diving',
+            54 => 'Multi gas diving',
+            55 => 'Gauge diving',
+            56 => 'Apnea diving',
+            57 => 'Apnea hunting',
+            58 => 'Virtual activity',
+            59 => 'Obstacle',
+            62 => 'Breathing',
+            65 => 'Sail race',
+            67 => 'Ultra',
+            68 => 'Indoor climbing',
+            69 => 'Bouldering',
+            70 => 'Hiit',
+            73 => 'Amrap',
+            74 => 'Emom',
+            75 => 'Tabata',
+            84 => 'Pickleball',
+            85 => 'Padel',
+            86 => 'Indoor wheelchair walk',
+            87 => 'Indoor wheelchair run',
+            88 => 'Indoor hand cycling',
+            110 => 'Fly canopy',
+            111 => 'Fly paraglide',
+            112 => 'Fly paramotor',
+            113 => 'Fly pressurized',
+            114 => 'Fly navigate',
+            115 => 'Fly timer',
+            116 => 'Fly altimeter',
+            117 => 'Fly wx',
+            118 => 'Fly vfr',
+            119 => 'Fly ifr',
             254 => 'All'
         ],
         'session_trigger' => [0 => 'activity_end', 1 => 'manual', 2 => 'auto_multi_sport', 3 => 'fitness_equipment'],
@@ -929,6 +970,8 @@ class phpFITFileAnalysis
                 123 => ['field_name' => 'max_cadence_position',           'scale' => 1,         'offset' => 0, 'units' => 'rpm'],
                 253 => ['field_name' => 'timestamp',                      'scale' => 1,         'offset' => 0, 'units' => 's'],
                 254 => ['field_name' => 'message_index',                  'scale' => 1,         'offset' => 0, 'units' => ''],
+                192 => ['field_name' => 'feel',                           'scale' => 10,        'offset' => 0, 'units' => ''],
+                193 => ['field_name' => 'rpe',                            'scale' => 10,        'offset' => 0, 'units' => ''],
             ]
         ],
 
@@ -1440,7 +1483,7 @@ class phpFITFileAnalysis
                     $architecture = ord(substr($this->file_contents, $this->file_pointer, 1));  // Architecture
                     $this->file_pointer++;
 
-                    $this->types = $this->endianness[$architecture];
+                    $this->types = $this->endianness[$architecture] ?? [];
 
                     $global_mesg_num = ($architecture === 0) ? unpack('v1tmp', substr($this->file_contents, $this->file_pointer, 2))['tmp'] : unpack('n1tmp', substr($this->file_contents, $this->file_pointer, 2))['tmp'];
                     $this->file_pointer += 2;
@@ -1549,6 +1592,14 @@ class phpFITFileAnalysis
                                                 $this->data_mesgs[$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['mesg_name']][$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['field_name']][] = $tmp_value / $this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['scale'] - $this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['offset'];
                                             }
                                         }
+                                    }
+                                } else {
+                                    $file_key = $this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['mesg_name'];
+                                    $field_key = [$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['field_name']];
+                                    $always_process = [['avg_heart_rate'], ['max_heart_rate'], ['avg_power'], ['max_power'], ['normalized_power'], ['total_work'], ['total_cycles'], ['avg_cadence'], ['max_cadence'], ['avg_fractional_cadence'], ['max_fractional_cadence'], ['training_stress_score'], ['intensity_factor'], ['threshold_power'], ['time_in_hr_zone'], ['total_training_effect'], ['total_ascent'], ['total_descent']];
+
+                                    if ($file_key === 'session' && in_array($field_key, $always_process, true)) {
+                                        $this->data_mesgs[$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['mesg_name']][$this->data_mesg_info[$this->defn_mesgs[$local_mesg_type]['global_mesg_num']]['field_defns'][$field_defn['field_definition_number']]['field_name']][] = null;
                                     }
                                 }
                             }
@@ -2108,10 +2159,21 @@ class phpFITFileAnalysis
         $tmp = $this->enumData('product', $this->data_mesgs['device_info']['product']);
         return is_array($tmp) ? $tmp[0] : $tmp;
     }
-    public function sport()
+    public function sport(int $index = null)
     {
-        $tmp = $this->enumData('sport', isset($this->data_mesgs['session']['sport']) ? $this->data_mesgs['session']['sport'] : 0);
-        return is_array($tmp) ? $tmp[0] : $tmp;
+        $tmp = $this->enumData('sport', $this->data_mesgs['session']['sport'] ?? ($this->data_mesgs['sport']['sport'] ?? 0));
+
+        if (is_array($tmp)) {
+            if ($index !== null) {
+                if (isset($tmp[$index])) {
+                    return $tmp[$index];
+                }
+            }
+
+            return $tmp[0];
+        }
+
+        return $tmp;
     }
 
     /**
